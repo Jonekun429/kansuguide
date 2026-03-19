@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCスキル学習＆実践ナビ</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #5C8E84;
+      --primary-dark: #3E6B62;
+      --primary-light: #EDF4F2;
+      --bg-page: #F6F7F5;
+      --bg-card: #FFFFFF;
+      --text-main: #2B3830;
+      --text-sub: #7E928C;
+      --border: #E5EBE8;
+      --danger: #B36060;
+    }
+    
+    * {
+      font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+    }
+    
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: var(--border);
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useCallback } = React;
+
+    // データベース - すべての関数とショートカット
+    const DATABASE = [
+      // 合計・集計
+      { id: 1, name: "SUM", cat: "合計・集計", desc: "指定した範囲の数値をすべて合計します。", example: "=SUM(A1:A10)", usecase: "【月次売上】営業データの売上欄をすべて足す。【帳簿】複式簿記で月間の収入合計を計算。", keywords: ["合計", "足す", "サム"], related: [2, 3, 50], difficulty: 1, popular: true },
+      { id: 2, name: "SUMIF", cat: "合計・集計", desc: "1つの条件を指定して、それに一致するセルの数値を合計します。", example: "=SUMIF(A1:A10, \"男\", B1:B10)", usecase: "【部門別売上】営業部の売上だけ合計。【性別集計】男性の給与の合計のみ計算。【帳簿】特定のカテゴリの支出だけを集計。", keywords: ["条件付き", "合計", "サムイフ"], related: [1, 3], difficulty: 1, popular: true },
+      { id: 3, name: "SUMIFS", cat: "合計・集計", desc: "複数の条件を指定して、それに一致するセルの数値を合計します。", example: "=SUMIFS(C1:C10, A1:A10, \"男\", B1:B10, \">=60\")", usecase: "【複雑な集計】東京営業所＆売上50万以上の案件だけ合計。【複式簿記】特定期間＆特定カテゴリの支出。【在庫管理】●●商品＆2024年の売上。", keywords: ["複数条件", "合計", "サムイフス"], related: [1, 2], difficulty: 2, popular: false },
+      { id: 12, name: "AVERAGE", cat: "合計・集計", desc: "指定した範囲の数値の平均値を求めます。", example: "=AVERAGE(C2:C100)", usecase: "【平均売上】月々の売上の平均を把握。【テスト成績】クラス全体の平均点。【単価計算】複数商品の平均価格。", keywords: ["平均", "アベレージ"], related: [1, 40], difficulty: 1, popular: false },
+      { id: 40, name: "MAX / MIN", cat: "合計・集計", desc: "指定した範囲内の最大値または最小値を求めます。", example: "=MAX(C2:C100)", usecase: "【ランキング】月間売上の最高値・最低値を把握。【在庫管理】最多在庫数と最少在庫数。【日程調整】納期の早い案件・遅い案件を確認。", keywords: ["最大", "最小", "マックス"], related: [1, 12], difficulty: 1, popular: false },
+      { id: 50, name: "SUBTOTAL", cat: "合計・集計", desc: "非表示の行やフィルタで除外された行を無視して計算します。", example: "=SUBTOTAL(9, C2:C100)", usecase: "【フィルタ済み集計】見えているデータだけの合計が必要。【作業効率】全体と部分集計を同じシートで管理。", keywords: ["小計", "フィルタ", "表示"], related: [1, 3], difficulty: 2, popular: false },
+      
+      // 件数カウント
+      { id: 5, name: "COUNTA", cat: "件数カウント", desc: "空白以外のセルの個数を数えます。", example: "=COUNTA(A1:A10)", usecase: "【入力チェック】顧客リストの人数を数える。【データ品質】未入力セルがあるかを把握。", keywords: ["数える", "個数", "カウント"], related: [6, 7], difficulty: 1, popular: false },
+      { id: 6, name: "COUNTIF", cat: "件数カウント", desc: "1つの条件を指定して、それに一致するセルの個数を数えます。", example: "=COUNTIF(B1:B10, \"合格\")", usecase: "【合格者数】試験で『合格』が何人いるか数える。【営業報告】●●会社からの問い合わせが何件あるか。【帳簿】未払いの請求書が何件あるか。", keywords: ["条件", "数える", "カウントイフ"], related: [5, 7], difficulty: 1, popular: false },
+      { id: 7, name: "COUNTIFS", cat: "件数カウント", desc: "複数の条件を指定して、それに一致するセルの個数を数えます。", example: "=COUNTIFS(A1:A10, \"男\", B1:B10, \"合格\")", usecase: "【複雑な集計】『男性』かつ『合格』の人数。【営業管理】東京支店＆2024年の案件数。【在庫】●●商品＆在庫不足の品目数。", keywords: ["複数条件", "数える"], related: [5, 6], difficulty: 2, popular: false },
+      { id: 56, name: "COUNTBLANK", cat: "件数カウント", desc: "指定した範囲の中で、空白セルの個数を数えます。", example: "=COUNTBLANK(A1:A100)", usecase: "【未入力チェック】データ入力の漏れを検出。【データ品質】記入漏れがある行を特定。", keywords: ["空白", "未入力"], related: [5, 6], difficulty: 1, popular: false },
+      
+      // 条件分岐
+      { id: 8, name: "IF", cat: "条件分岐", desc: "条件を満たしている場合と満たしていない場合で、表示する値を変えます。", example: "=IF(A1=\"\", \"\", A1&B1)", usecase: "【成績判定】60点以上なら『合格』、未満なら『不合格』。【帳簿】売上がプラスなら『黒字』、マイナスなら『赤字』。【名前結合】苗字と名前を『苗字 名前』形式でつなぐ。", keywords: ["もし", "条件", "判定"], related: [9, 59, 60], difficulty: 1, popular: true },
+      { id: 9, name: "IFS", cat: "条件分岐", desc: "複数の条件を順に調べ、最初に満たした条件に対する値を返します。", example: "=IFS(A1>=80, \"優\", A1>=60, \"良\", A1<60, \"不\")", usecase: "【成績判定】80点以上『優』60点以上『良』未満『不』。【単価計算】数量による割引率を分岐。【在庫状況】100個以上『潤沢』50個以上『通常』未満『不足』。", keywords: ["複数条件", "順番", "イフス"], related: [8, 60], difficulty: 2, popular: false },
+      { id: 17, name: "IFERROR", cat: "条件分岐", desc: "数式の結果がエラーになる場合に、指定した値を表示させます。", example: "=IFERROR(VLOOKUP(A2, E:F, 2, FALSE), \"\")", usecase: "【検索時のエラー回避】VLOOKUPで見つからない場合『見つかりません』と表示。【計算エラー】0で割ったときにエラーを隠す。【見栄え】#N/Aなどのエラー表示を整える。", keywords: ["エラー", "回避"], related: [8, 64], difficulty: 2, popular: false },
+      { id: 59, name: "AND / OR", cat: "条件分岐", desc: "複数の条件を「すべて満たす」か「どれか1つでも満たす」かを判定します。", example: "=IF(AND(A2=\"男\", B2>=60), \"合格\", \"不合格\")", usecase: "【複合条件】東京支店『かつ』売上50万以上。【データ検証】『名前』『メール』『電話』がすべて入力されているか確認。", keywords: ["かつ", "または", "複数"], related: [8, 60], difficulty: 2, popular: false },
+      { id: 60, name: "SWITCH", cat: "条件分岐", desc: "基準となる値が、複数の候補のどれと一致するかを調べ、対応する結果を返します。", example: "=SWITCH(A2, 1, \"金\", 2, \"銀\", 3, \"銅\", \"参加賞\")", usecase: "【メダル判定】1位『金』2位『銀』3位『銅』。【ステータス管理】1『新規』2『進行中』3『完了』。【シフト】月『月曜』火『火曜』などを自動判定。", keywords: ["分岐", "置き換え", "スイッチ"], related: [8, 9], difficulty: 2, popular: false },
+      
+      // 検索・抽出
+      { id: 11, name: "XLOOKUP", cat: "検索・抽出", desc: "検索して対応する値を取り出します。（VLOOKUPの進化版）", example: "=XLOOKUP(\"1001\", A2:A10, B2:B10, \"該当なし\")", usecase: "【商品コード検索】商品コード1001の価格を取り出す。【顧客管理】顧客IDから住所を引っ張ってくる。【在庫管理】SKUから在庫数を自動取得。", keywords: ["検索", "取り出す", "新しい"], related: [13, 43, 44], difficulty: 2, popular: false },
+      { id: 13, name: "VLOOKUP", cat: "検索・抽出", desc: "表を縦方向に検索し、一致したデータと同じ行にある指定した列のデータを取り出します。", example: "=VLOOKUP(A2, D2:F100, 2, FALSE)", usecase: "【マスタデータ参照】商品コードから商品名を引っ張る。【給与管理】従業員IDから基本給を自動取得。【帳簿】勘定科目から科目コードを検索。", keywords: ["検索", "定番", "ブイ"], related: [11, 43, 44], difficulty: 1, popular: true },
+      { id: 14, name: "FILTER", cat: "検索・抽出", desc: "条件に一致するデータだけを抽出して別の場所に表示します。", example: "=FILTER(A2:D100, B2:B100=\"営業部\")", usecase: "【部門別抽出】営業部のデータだけ別シートに表示。【成績抽出】合格者のみリストアップ。【在庫低下警告】在庫が50個以下の商品を一覧化。", keywords: ["絞り込み", "抽出"], related: [11, 16], difficulty: 2, popular: false },
+      { id: 16, name: "UNIQUE", cat: "検索・抽出", desc: "重複するデータを取り除き、一意の値のリストを抽出します。", example: "=UNIQUE(A2:A100)", usecase: "【顧客リスト】重複する顧客名を削除して一覧化。【地域マスタ】営業所の地域を重複なしで表示。【商品分類】カテゴリの種類を数える準備。", keywords: ["重複", "削除", "ユニーク"], related: [14, 15], difficulty: 2, popular: false },
+      { id: 43, name: "INDEX", cat: "検索・抽出", desc: "指定した行と列が交差する位置にあるセルの値を取り出します。", example: "=INDEX(A1:D100, 3, 2)", usecase: "【高度な検索】MATCHと組み合わせて左側検索を実現。【ダイナミックな参照】行番号・列番号で柔軟にデータ抽出。", keywords: ["取り出す", "高度"], related: [13, 44], difficulty: 3, popular: false },
+      { id: 44, name: "MATCH", cat: "検索・抽出", desc: "指定した値が、範囲内の何番目にあるかを数値で返します。", example: "=MATCH(\"A001\", A1:A100, 0)", usecase: "【INDEXとセット】『A001』が何行目にあるか特定してから取り出す。【動的参照】ユーザー入力に応じて列番号を自動判定。", keywords: ["何番目", "位置"], related: [43, 13], difficulty: 3, popular: false },
+      
+      // 文字列操作
+      { id: 18, name: "& (アンパサンド)", cat: "文字列操作", desc: "複数のセルや文字を連結して、1つの文字列にします。", example: "=YEAR(A2) & MONTH(A2) & DAY(A2)", usecase: "【名前統合】『山田』と『太郎』を『山田太郎』に。【管理番号】『2024』『03』『19』から『20240319』を生成。", keywords: ["つなぐ", "結合"], related: [57, 58], difficulty: 1, popular: false },
+      { id: 19, name: "LEFT", cat: "文字列操作", desc: "文字列の左端から指定した文字数だけを取り出します。", example: "=LEFT(A2, 3)", usecase: "【シリーズコード抽出】『201901234』から最初の4文字『2019』を取り出し。【名前から読みかな】漢字から1文字目だけ取り出し。", keywords: ["左から", "取り出す"], related: [20, 21], difficulty: 1, popular: false },
+      { id: 20, name: "RIGHT", cat: "文字列操作", desc: "文字列の右端から指定した文字数だけを取り出します。", example: "=RIGHT(A2, 2)", usecase: "【年号抽出】『2024年』から『24』を取り出す。【郵便番号後ろ4桁】『100-0001』から『0001』を抽出。", keywords: ["右から", "末尾"], related: [19, 21], difficulty: 1, popular: false },
+      { id: 21, name: "MID", cat: "文字列操作", desc: "文字列の任意の位置から、指定した文字数だけを取り出します。", example: "=MID(A2, 4, 2)", usecase: "【生年月日抽出】『20240319』から『03』（月）を抽出。【商品コード分解】『JP-ABC-001』から『ABC』部分だけを取り出し。", keywords: ["途中から", "間から"], related: [19, 20], difficulty: 1, popular: false },
+      { id: 23, name: "SUBSTITUTE", cat: "文字列操作", desc: "文字列の中にある特定の文字を、別の文字に置き換えます。", example: "=SUBSTITUTE(A2, \"株式会社\", \"\")", usecase: "【会社名統一】『株式会社テスト』から『テスト』だけ抽出（『株式会社』を削除）。【データ正規化】全角スペースを半角スペースに。", keywords: ["置き換え", "置換"], related: [24, 26], difficulty: 2, popular: false },
+      { id: 26, name: "TRIM", cat: "文字列操作", desc: "文字列の先頭や末尾にある余分なスペースを削除します。", example: "=TRIM(A2)", usecase: "【データクリーニング】入力ミスで余分なスペースがある場合を整える。【VLOOKUP失敗対策】スペースが原因で見つからないのを修正。", keywords: ["空白削除", "スペース"], related: [23, 27], difficulty: 1, popular: false },
+      { id: 57, name: "TEXTJOIN", cat: "文字列操作", desc: "複数の文字列を、指定した「区切り文字」で結合します。", example: "=TEXTJOIN(\",\", TRUE, A2:C2)", usecase: "【カンマ区切り生成】データを『A,B,C』形式で結合（CSV出力準備）。【リスト作成】複数セルを『・』で区切って1行に。", keywords: ["結合", "区切り"], related: [18, 58], difficulty: 2, popular: false },
+      
+      // 数学・計算
+      { id: 30, name: "ROUND", cat: "数学・計算", desc: "数値を指定した桁数で四捨五入します。", example: "=ROUND(A2, 0)", usecase: "【金額計算】税込価格の計算後、小数点以下を四捨五入。【統計】平均値を2桁で表示。", keywords: ["四捨五入", "丸める"], related: [31, 32], difficulty: 1, popular: false },
+      { id: 31, name: "ROUNDDOWN", cat: "数学・計算", desc: "数値を指定した桁数で切り捨てます。", example: "=ROUNDDOWN(A2, 0)", usecase: "【税抜計算】税込価格から消費税を引いた金額を整数に。【ポイント計算】端数は捨てる仕様。", keywords: ["切り捨て", "ラウンドダウン"], related: [30, 32], difficulty: 1, popular: false },
+      { id: 32, name: "ROUNDUP", cat: "数学・計算", desc: "数値を指定した桁数で切り上げます。", example: "=ROUNDUP(A2, 0)", usecase: "【配送料金】端数は必ず上乗せ。【予算計算】切り上げて最悪ケースに対応。", keywords: ["切り上げ", "ラウンドアップ"], related: [30, 31], difficulty: 1, popular: false },
+      { id: 51, name: "MOD", cat: "数学・計算", desc: "割り算をしたときの「余り」を求めます。", example: "=MOD(A2, 2)", usecase: "【奇偶判定】MOD(A2,2)=0なら偶数。【ローテーション】曜日の循環（MOD(日付,7)）。", keywords: ["余り", "剰余"], related: [30, 52], difficulty: 2, popular: false },
+      
+      // 日付・時刻
+      { id: 33, name: "TODAY", cat: "日付・時刻", desc: "今日の日付を表示します。自動で更新されます。", example: "=TODAY()", usecase: "【請求期限】TODAY()+30で30日後の期限日。【経過日数】TODAY()-開始日で経過日数を計算。", keywords: ["今日", "日付"], related: [34, 37], difficulty: 1, popular: false },
+      { id: 34, name: "YEAR / MONTH / DAY", cat: "日付・時刻", desc: "日付データから「年」「月」「日」の部分だけを取り出します。", example: "=YEAR(A2) & \"年\" & MONTH(A2) & \"月\"", usecase: "【年度分類】YEAR(日付)=2024の売上だけ抽出。【月別集計】MONTH(日付)=3（3月）のデータだけ集計。【日齢計算】TODAY()-DAY(生年月日)。", keywords: ["年", "月", "日", "分割"], related: [33, 37], difficulty: 1, popular: false },
+      { id: 37, name: "EOMONTH", cat: "日付・時刻", desc: "指定した日付から、数ヶ月前や数ヶ月後の「月末」の日付を求めます。", example: "=EOMONTH(TODAY(), 1)", usecase: "【締め日計算】EOMONTH(TODAY(),0)で今月末日。【翌月末】EOMONTH(TODAY(),1)で翌月末。【請求日】受注日から1ヶ月後の月末を請求日に。", keywords: ["月末", "締め日"], related: [33, 34], difficulty: 1, popular: false },
+      
+      // ショートカット - Excel / OS
+      { id: 101, name: "コピー", cat: "ショートカット", desc: "選択したセルや文字をコピーします。", example: "Ctrl + C", keywords: ["コピー", "複製"], related: [102, 103], type: "shortcut", difficulty: 1, popular: true },
+      { id: 102, name: "貼り付け", cat: "ショートカット", desc: "コピーした内容を貼り付けます。", example: "Ctrl + V", keywords: ["ペースト", "貼り付け"], related: [101, 103], type: "shortcut", difficulty: 1, popular: true },
+      { id: 103, name: "値のみ貼り付け", cat: "ショートカット", desc: "書式を無視して、データだけを貼り付けます。", example: "Ctrl + Shift + V", keywords: ["値貼り付け", "書式なし"], related: [101, 102], type: "shortcut", difficulty: 1, popular: false },
+      { id: 104, name: "元に戻す", cat: "ショートカット", desc: "直前の操作を取り消します。", example: "Ctrl + Z", keywords: ["戻す", "アンドゥ"], related: [105], type: "shortcut", difficulty: 1, popular: true },
+      { id: 105, name: "やり直し", cat: "ショートカット", desc: "取り消した操作をもう一度やり直します。", example: "Ctrl + Y", keywords: ["やり直し", "リドゥ"], related: [104], type: "shortcut", difficulty: 1, popular: false },
+      { id: 106, name: "検索", cat: "ショートカット", desc: "シート内の特定の文字を探します。", example: "Ctrl + F", keywords: ["検索", "探す"], related: [107], type: "shortcut", difficulty: 1, popular: false },
+      { id: 115, name: "スクショ", cat: "ショートカット", desc: "画面の指定範囲を撮影し、クリップボードにコピーします。", example: "Win + Shift + S", keywords: ["スクショ", "キャプチャ"], related: [121], type: "shortcut", difficulty: 1, popular: true },
+      { id: 118, name: "画面ロック", cat: "ショートカット", desc: "席を離れる際など、パソコンの画面をロックします。", example: "Win + L", keywords: ["ロック", "セキュリティ"], related: [119], type: "shortcut", difficulty: 1, popular: false },
+      
+      // 動画編集 - Premiere Pro
+      { id: 201, name: "カット位置へジャンプ", cat: "動画編集(Premiere)", desc: "各クリップの端（カット位置）へ一気に移動します。", example: "↑ / ↓", keywords: ["ジャンプ", "カット", "移動"], related: [202, 203], type: "shortcut", difficulty: 2, popular: false },
+      { id: 202, name: "5フレームずつ移動", cat: "動画編集(Premiere)", desc: "タイムラインのカーソルを5フレームずつ素早く移動させます。", example: "Shift + ← / →", keywords: ["移動", "フレーム", "早送り"], related: [201], type: "shortcut", difficulty: 2, popular: false },
+      { id: 203, name: "イン / アウト点の指定", cat: "動画編集(Premiere)", desc: "動画の書き出しや削除の範囲を指定します。", example: "I / O", keywords: ["イン", "アウト", "範囲"], related: [201], type: "shortcut", difficulty: 2, popular: false },
+      { id: 204, name: "リップル削除", cat: "動画編集(Premiere)", desc: "クリップの消去と空白の削除を同時に行います。", example: "Alt + Delete", keywords: ["削除", "リップル", "空白"], related: [205, 206], type: "shortcut", difficulty: 2, popular: false },
+    ];
+
+    function App() {
+      const [search, setSearch] = useState("");
+      const [cat, setCat] = useState("すべて");
+      const [copiedId, setCopiedId] = useState(null);
+      const [history, setHistory] = useState([]);
+
+      // カテゴリ一覧（重複なし）
+      const categories = useMemo(() => {
+        const cats = new Set(DATABASE.map(d => d.cat));
+        return ["すべて", ...Array.from(cats).sort()];
+      }, []);
+
+      // フィルタリング
+      const filtered = useMemo(() => {
+        return DATABASE.filter(item => {
+          if (cat !== "すべて" && item.cat !== cat) return false;
+          if (!search.trim()) return true;
+
+          const q = search.toLowerCase();
+          return (
+            item.name.toLowerCase().includes(q) ||
+            item.desc.toLowerCase().includes(q) ||
+            item.keywords.some(k => k.toLowerCase().includes(q))
+          );
+        });
+      }, [search, cat]);
+
+      // コピー機能
+      const handleCopy = (text, id) => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopiedId(id);
+          const item = DATABASE.find(d => d.id === id);
+          setHistory(prev => 
+            [{ id, name: item?.name, text, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 15)
+          );
+          setTimeout(() => setCopiedId(null), 2000);
+        }).catch(err => console.error("コピー失敗:", err));
+      };
+
+      // 関連関数取得
+      const getRelated = useCallback((id) => {
+        const item = DATABASE.find(d => d.id === id);
+        return item?.related ? DATABASE.filter(d => item.related.includes(d.id)) : [];
+      }, []);
+
+      return (
+        <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)' }}>
+          {/* ヘッダー */}
+          <header style={{ background: `linear-gradient(135deg, var(--primary-dark), var(--primary))`, color: 'white', padding: '24px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+              <h1 style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '2.5px', margin: 0 }}>
+                PCスキル学習＆実践ナビ
+              </h1>
+              <p style={{ fontSize: '14px', opacity: 0.9, margin: '8px 0 0 0', fontWeight: 400 }}>
+                スプシ・動画編集・PC時短術まで網羅。あの関数に素早くたどり着く。
+              </p>
+            </div>
+          </header>
+
+          {/* メイン */}
+          <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
+            {/* 検索セクション */}
+            <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', padding: '24px', marginBottom: '32px', border: `1px solid var(--border)`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="例: SUM, IF, 合計, 検索, スクショ, リップル..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    padding: '12px 16px',
+                    border: `1px solid var(--border)`,
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <select
+                  value={cat}
+                  onChange={(e) => setCat(e.target.value)}
+                  style={{
+                    padding: '12px 16px',
+                    border: `1px solid var(--border)`,
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'var(--bg-card)',
+                    cursor: 'pointer',
+                    minWidth: '180px'
+                  }}
+                >
+                  {categories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-sub)', margin: 0 }}>
+                {filtered.length} / {DATABASE.length} 件
+              </p>
+            </div>
+
+            {/* 結果表示 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '24px' }}>
+              {/* 関数リスト */}
+              <div>
+                {filtered.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: `2px dashed var(--border)` }}>
+                    <p style={{ color: 'var(--text-sub)', fontWeight: 600, margin: 0 }}>該当する項目が見つかりません</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {filtered.map(item => (
+                      <div key={item.id} style={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', padding: '20px', border: `1px solid var(--border)`, borderLeft: `4px solid var(--primary)`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.3s' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
+                          <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, color: 'var(--primary-dark)' }}>
+                            {item.name}
+                          </h3>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {item.popular && (
+                              <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: '#FFE5E5', color: '#B36060', borderRadius: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                ★ 人気
+                              </span>
+                            )}
+                            <span style={{ fontSize: '12px', padding: '4px 12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderRadius: '20px', fontWeight: '600' }}>
+                              {item.cat}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* 難易度表示 */}
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-sub)' }}>難易度：</span>
+                          <span style={{ marginLeft: '8px', fontSize: '14px', letterSpacing: '2px' }}>
+                            {item.difficulty === 1 ? '⭐ 初級' : item.difficulty === 2 ? '⭐⭐ 中級' : '⭐⭐⭐ 上級'}
+                          </span>
+                        </div>
+                        
+                        <p style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '16px', lineHeight: '1.5' }}>
+                          {item.desc}
+                        </p>
+
+                        {/* ユースケース表示 */}
+                        {item.usecase && (
+                          <div style={{ backgroundColor: '#FDF6EE', borderRadius: '8px', padding: '12px', marginBottom: '16px', border: '1px solid #E9A400', fontSize: '13px', lineHeight: '1.6', color: '#5D4C2C' }}>
+                            <strong style={{ color: '#8A6030' }}>💡 こんなとき：</strong> {item.usecase}
+                          </div>
+                        )}
+
+                        {/* コピーボタン */}
+                        <div style={{ backgroundColor: 'var(--primary-light)', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: item.related?.length > 0 ? '16px' : 0 }}>
+                          <code style={{ fontSize: '13px', fontFamily: 'monospace', color: 'var(--text-main)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.example}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(item.example, item.id)}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: copiedId === item.id ? 'var(--primary)' : '#FFF',
+                              color: copiedId === item.id ? '#FFF' : 'var(--text-main)',
+                              border: `1px solid ${copiedId === item.id ? 'var(--primary)' : 'var(--border)'}`,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {copiedId === item.id ? '✓ 完了' : 'コピー'}
+                          </button>
+                        </div>
+
+                        {/* 関連関数 */}
+                        {getRelated(item.id).length > 0 && (
+                          <div style={{ backgroundColor: 'var(--primary-light)', borderRadius: '8px', padding: '12px', border: `1px solid var(--primary)` }}>
+                            <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--primary-dark)', margin: '0 0 8px 0' }}>
+                              関連関数
+                            </p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {getRelated(item.id).map(rel => (
+                                <button
+                                  key={rel.id}
+                                  onClick={() => setSearch(rel.name)}
+                                  style={{
+                                    padding: '6px 12px',
+                                    backgroundColor: 'var(--bg-card)',
+                                    border: `1px solid var(--border)`,
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-main)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--primary-light)'}
+                                  onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--bg-card)'}
+                                >
+                                  → {rel.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* サイドバー：コピー履歴 */}
+              <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', padding: '20px', border: `1px solid var(--border)`, height: 'fit-content', position: 'sticky', top: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid var(--border)` }}>
+                  <h2 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>
+                    📋 コピー履歴
+                  </h2>
+                  {history.length > 0 && (
+                    <button
+                      onClick={() => setHistory([])}
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--text-sub)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        transition: 'color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.color = 'var(--danger)'}
+                      onMouseLeave={(e) => e.target.style.color = 'var(--text-sub)'}
+                    >
+                      クリア
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="custom-scrollbar">
+                  {history.length === 0 ? (
+                    <p style={{ fontSize: '12px', color: 'var(--text-sub)', textAlign: 'center', margin: '24px 0' }}>
+                      まだ履歴がありません
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {history.map((item, idx) => (
+                        <div key={idx} style={{ backgroundColor: 'var(--bg-page)', borderRadius: '6px', padding: '8px', fontSize: '12px', border: `1px solid var(--border)` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <strong style={{ color: 'var(--text-main)', fontSize: '13px' }}>{item.name}</strong>
+                            <span style={{ color: 'var(--text-sub)', fontSize: '11px' }}>{item.time}</span>
+                          </div>
+                          <code style={{ fontSize: '11px', color: 'var(--text-sub)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                            {item.text}
+                          </code>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
